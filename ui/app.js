@@ -7,7 +7,9 @@ const elements = {
     lfeGain: document.getElementById('lfe-gain'),
     lfeDelay: document.getElementById('lfe-delay'),
     bassBoost: document.getElementById('bass-boost'),
+    stereoWidth: document.getElementById('stereo-width'),
     lfePhase: document.getElementById('lfe-phase'),
+    swapSubCenter: document.getElementById('swap-sub-center'),
     crossoverFreq: document.getElementById('crossover-freq'),
     rearVal: document.getElementById('rear-val'),
     delayVal: document.getElementById('delay-val'),
@@ -15,7 +17,9 @@ const elements = {
     lfeVal: document.getElementById('lfe-val'),
     lfeDelayVal: document.getElementById('lfe-delay-val'),
     bassBoostVal: document.getElementById('bass-boost-val'),
+    widthVal: document.getElementById('width-val'),
     phaseLabel: document.getElementById('phase-label'),
+    swapLabel: document.getElementById('swap-label'),
     crossoverVal: document.getElementById('crossover-val'),
     statusLabel: document.getElementById('status-label'),
     appList: document.getElementById('app-list')
@@ -29,8 +33,10 @@ function updateLabels() {
     elements.lfeVal.innerText = elements.lfeGain.value + '%';
     elements.lfeDelayVal.innerText = elements.lfeDelay.value + ' ms';
     elements.bassBoostVal.innerText = elements.bassBoost.value + ' dB';
+    elements.widthVal.innerText = elements.stereoWidth.value + '%';
     elements.crossoverVal.innerText = elements.crossoverFreq.value + ' Hz';
     elements.phaseLabel.innerText = elements.lfePhase.checked ? 'Inverted' : 'Normal';
+    elements.swapLabel.innerText = elements.swapSubCenter.checked ? 'Swapped' : 'Normal';
 }
 
 // Master Toggle
@@ -52,7 +58,9 @@ function getCurrentParams() {
         lfe_gain: elements.lfeGain.value / 100,
         lfe_delay: elements.lfeDelay.value / 1000,
         bass_boost: parseFloat(elements.bassBoost.value),
+        stereo_width: elements.stereoWidth.value / 100,
         lfe_inverted: elements.lfePhase.checked,
+        swap_sub_center: elements.swapSubCenter.checked,
         crossover: elements.crossoverFreq.value
     };
 }
@@ -75,7 +83,9 @@ elements.centerGain.oninput = handleSliderChange;
 elements.lfeGain.oninput = handleSliderChange;
 elements.lfeDelay.oninput = handleSliderChange;
 elements.bassBoost.oninput = handleSliderChange;
+elements.stereoWidth.oninput = handleSliderChange;
 elements.lfePhase.onchange = handleSliderChange;
+elements.swapSubCenter.onchange = handleSliderChange;
 elements.crossoverFreq.oninput = handleSliderChange;
 
 // Reset to Defaults
@@ -88,7 +98,9 @@ elements.resetBtn.onclick = () => {
             lfe_gain: 1.0,
             lfe_delay: 0,
             bass_boost: 0,
+            stereo_width: 1.0,
             lfe_inverted: false,
+            swap_sub_center: false,
             crossover: 120
         };
         elements.rearGain.value = 70;
@@ -97,7 +109,9 @@ elements.resetBtn.onclick = () => {
         elements.lfeGain.value = 100;
         elements.lfeDelay.value = 0;
         elements.bassBoost.value = 0;
+        elements.stereoWidth.value = 100;
         elements.lfePhase.checked = false;
+        elements.swapSubCenter.checked = false;
         elements.crossoverFreq.value = 120;
         
         updateLabels();
@@ -130,7 +144,9 @@ function init() {
             if (settings.lfe_gain !== undefined) elements.lfeGain.value = settings.lfe_gain * 100;
             if (settings.lfe_delay !== undefined) elements.lfeDelay.value = settings.lfe_delay * 1000;
             if (settings.bass_boost !== undefined) elements.bassBoost.value = settings.bass_boost;
+            if (settings.stereo_width !== undefined) elements.stereoWidth.value = settings.stereo_width * 100;
             if (settings.lfe_inverted !== undefined) elements.lfePhase.checked = settings.lfe_inverted;
+            if (settings.swap_sub_center !== undefined) elements.swapSubCenter.checked = settings.swap_sub_center;
             if (settings.crossover !== undefined) elements.crossoverFreq.value = settings.crossover;
             if (settings.is_enabled !== undefined) elements.masterToggle.checked = settings.is_enabled;
             

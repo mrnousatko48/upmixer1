@@ -23,6 +23,15 @@
         <section class="controls">
             <div class="control-group">
                 <div class="label-row">
+                    <label>Stereo Width</label>
+                    <span id="width-val">100%</span>
+                </div>
+                <input type="range" id="stereo-width" min="0" max="200" value="100">
+                <p class="note">Expands the front soundstage. 150%+ creates a "wrap-around" feeling.</p>
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
                     <label>Rear Fill</label>
                     <span id="rear-val">70%</span>
                 </div>
@@ -50,20 +59,20 @@
 
             <div class="control-group">
                 <div class="label-row">
-                    <label>LFE (Bass) Power</label>
+                    <label>Subwoofer Power</label>
                     <span id="lfe-val">100%</span>
                 </div>
-                <input type="range" id="lfe-gain" min="0" max="200" value="100">
-                <p class="note">Subwoofer volume. Higher values provide more "thump".</p>
+                <input type="range" id="lfe-gain" min="0" max="400" value="100">
+                <p class="note">Master Sub volume. Unlocked 5.1 hardware mode.</p>
             </div>
 
             <div class="control-group">
                 <div class="label-row">
-                    <label>Bass Enrichment</label>
+                    <label>Deep Bass Enrichment</label>
                     <span id="bass-boost-val">0 dB</span>
                 </div>
-                <input type="range" id="bass-boost" min="0" max="15" value="0">
-                <p class="note">Peaking boost at 60Hz. Adds deep "DVD-style" punch.</p>
+                <input type="range" id="bass-boost" min="0" max="20" value="0">
+                <p class="note">Targets 35Hz & 60Hz for maximum physical vibration.</p>
             </div>
 
             <div class="control-group">
@@ -87,6 +96,20 @@
                     </div>
                 </div>
                 <p class="note">Invert phase if the bass feels "hollow" or missing.</p>
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Swap Center / Sub</label>
+                    <div class="toggle-group">
+                        <label class="switch small">
+                            <input type="checkbox" id="swap-sub-center">
+                            <span class="slider round"></span>
+                        </label>
+                        <span id="swap-label">Normal</span>
+                    </div>
+                </div>
+                <p class="note">Swaps Center and LFE channels. Try this if you hear voices in the sub!</p>
             </div>
 
             <div class="control-group">

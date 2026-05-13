@@ -51,7 +51,8 @@ class UpmixApp:
             "rear_gain": 0.7, "rear_delay": 0.015,
             "center_gain": 0.8, "lfe_gain": 1.0, 
             "lfe_delay": 0.0, "bass_boost": 0,
-            "lfe_inverted": False, "crossover": 120, 
+            "stereo_width": 1.0, "lfe_inverted": False, 
+            "swap_sub_center": False, "crossover": 120, 
             "is_enabled": True
         }
 
@@ -93,17 +94,19 @@ class UpmixApp:
         if not node_id: return
 
         if not self.is_enabled:
-            rear, center, lfe, boost = 0.0, 0.0, 0.0, 0.0
+            rear, center, lfe, boost, width = 0.0, 0.0, 0.0, 0.0, 0.0
         else:
             rear = params.get('rear_gain', 0.7)
             center = params.get('center_gain', 0.8)
             lfe = params.get('lfe_gain', 1.0)
             boost = params.get('bass_boost', 0)
+            width = params.get('stereo_width', 1.0)
             if params.get('lfe_inverted', False):
                 lfe = -lfe
 
         delay_rear = params.get('rear_delay', 0.015)
         delay_lfe = params.get('lfe_delay', 0.0)
+        swap = params.get('swap_sub_center', False)
         
         try:
             commands = [
@@ -112,7 +115,13 @@ class UpmixApp:
                 f'"mixRL:Gain 1" {rear}', f'"mixRR:Gain 1" {rear}',
                 f'"delayRL:Delay (s)" {delay_rear}', f'"delayRR:Delay (s)" {delay_rear}',
                 f'"delayLFE:Delay (s)" {delay_lfe}', 
-                f'"eqLFE:Gain 3" {boost}'
+                f'"eqLFE:Gain 3" {boost}',
+                f'"eqLFE:Gain 4" {boost * 0.7}',
+                f'"routeFC:Gain 1" {1.0 if not swap else 0.0}',
+                f'"routeFC:Gain 2" {0.0 if not swap else 1.0}',
+                f'"routeLFE:Gain 1" {0.0 if not swap else 1.0}',
+                f'"routeLFE:Gain 2" {1.0 if not swap else 0.0}',
+                f'"outFL:Gain 2" {width}', f'"outFR:Gain 2" {-width}'
             ]
             for cmd in commands:
                 subprocess.run(["pw-cli", "s", str(node_id), "Props", f"{{ params = [ {cmd} ] }}"], capture_output=True)
