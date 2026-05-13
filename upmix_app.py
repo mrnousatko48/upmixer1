@@ -19,10 +19,8 @@ class UpmixAPI:
     def toggle_upmixer(self, active, params):
         self.app.is_enabled = active
         self.app.save_settings(params)
-        if active:
-            self.app.load_upmixer(params)
-        else:
-            self.app.bypass_all_streams()
+        # We stay routed to Upmix_Sink but zero out the surround channels
+        self.app.apply_live_params(params)
 
     def update_params(self, params):
         self.app.save_settings(params)
@@ -39,12 +37,8 @@ class UpmixApp:
     def __init__(self):
         self.is_loaded = False
         self.active_streams = []
-        self.current_params = None
-        self.module_id = None
-        self.monitor_thread = None
         self.running = True
         self.is_enabled = True
-        self.last_enabled_state = True
 
     def load_settings(self):
         if os.path.exists(SETTINGS_FILE):
@@ -52,10 +46,14 @@ class UpmixApp:
                 with open(SETTINGS_FILE, 'r') as f:
                     settings = json.load(f)
                     self.is_enabled = settings.get('is_enabled', True)
-                    self.last_enabled_state = self.is_enabled
                     return settings
             except: pass
-        return {"rear_gain": 0.7, "center_gain": 0.8, "lfe_gain": 1.0, "crossover": 120, "is_enabled": True}
+        return {
+            "rear_gain": 0.7, "rear_delay": 0.015,
+            "center_gain": 0.8, "lfe_gain": 1.0, 
+            "lfe_inverted": False, "crossover": 120, 
+            "is_enabled": True
+        }
 
     def save_settings(self, params):
         settings = params.copy()
@@ -70,8 +68,7 @@ class UpmixApp:
         try:
             result = subprocess.run(["pw-dump"], capture_output=True, text=True, check=True)
             return json.loads(result.stdout)
-        except:
-            return []
+        except: return []
 
     def get_node_id_by_name(self, dump, name):
         for obj in dump:
@@ -95,15 +92,24 @@ class UpmixApp:
         node_id = self.get_node_id_by_name(dump, UPMIX_SINK_NAME)
         if not node_id: return
 
-        rear = params.get('rear_gain', 0.7)
-        center = params.get('center_gain', 0.8)
-        lfe = params.get('lfe_gain', 1.0)
+        # If disabled, force all gains to zero except FL/FR pass-through
+        if not self.is_enabled:
+            rear, center, lfe = 0.0, 0.0, 0.0
+        else:
+            rear = params.get('rear_gain', 0.7)
+            center = params.get('center_gain', 0.8)
+            lfe = params.get('lfe_gain', 1.0)
+            if params.get('lfe_inverted', False):
+                lfe = -lfe
+
+        delay = params.get('rear_delay', 0.015)
         
         try:
             commands = [
                 f'"mixFC:Gain 1" {center}', f'"mixFC:Gain 2" {center}',
                 f'"mixLFE:Gain 1" {lfe}', f'"mixLFE:Gain 2" {lfe}',
-                f'"mixRL:Gain 1" {rear}', f'"mixRR:Gain 1" {rear}'
+                f'"mixRL:Gain 1" {rear}', f'"mixRR:Gain 1" {rear}',
+                f'"delayRL:Delay (s)" {delay}', f'"delayRR:Delay (s)" {delay}'
             ]
             for cmd in commands:
                 subprocess.run(["pw-cli", "s", str(node_id), "Props", f"{{ params = [ {cmd} ] }}"], capture_output=True)
@@ -117,51 +123,30 @@ class UpmixApp:
                 if "target.node" in line:
                     parts = line.split()
                     try:
-                        n_id = None
-                        v_id = None
+                        n_id, v_id = None, None
                         for part in parts:
-                            if part.startswith("id:"):
-                                n_id = part[3:]
-                            elif part.startswith("value:"):
-                                v_id = part[6:].strip("'")
-                        if n_id and v_id:
-                            targets[n_id] = v_id
+                            if part.startswith("id:"): n_id = part[3:]
+                            elif part.startswith("value:"): v_id = part[6:].strip("'")
+                        if n_id and v_id: targets[n_id] = v_id
                     except: continue
             return targets
         except: return {}
 
-    def bypass_all_streams(self):
-        dump = self.get_pw_dump()
-        hw_sink_id = self.get_hardware_sink_id(dump)
-        if not hw_sink_id: return
-        for obj in dump:
-            if obj.get("type") == "PipeWire:Interface:Node":
-                props = obj.get("info", {}).get("props", {})
-                if props.get("media.class") == "Stream/Output/Audio":
-                    node_id = str(obj.get("id"))
-                    subprocess.run(["pw-metadata", "-n", "default", node_id, "target.node", str(hw_sink_id)])
-
     def ensure_upmixer_linked(self, dump, upmix_output_id, hw_sink_id):
         if not upmix_output_id or not hw_sink_id: return
-        # Check if already linked via metadata
         targets = self.get_metadata_targets()
         if targets.get(str(upmix_output_id)) != str(hw_sink_id):
-            print(f"Linking Upmix_Output ({upmix_output_id}) to Hardware ({hw_sink_id})")
             subprocess.run(["pw-metadata", "-n", "default", str(upmix_output_id), "target.node", str(hw_sink_id)])
 
     def monitor_loop(self):
-        # Track (node_id, serial, is_enabled) to detect changes
         last_states = {} 
-        
         while self.running:
             dump = self.get_pw_dump()
             upmix_id = self.get_node_id_by_name(dump, UPMIX_SINK_NAME)
             upmix_output_id = self.get_node_id_by_name(dump, "Upmix_Output")
             hw_sink_id = self.get_hardware_sink_id(dump)
             
-            # Ensure upmixer itself is routed to hardware
             self.ensure_upmixer_linked(dump, upmix_output_id, hw_sink_id)
-
             metadata_targets = self.get_metadata_targets()
 
             current_active = []
@@ -171,54 +156,39 @@ class UpmixApp:
                     if props.get("media.class") == "Stream/Output/Audio":
                         node_id = str(obj.get("id"))
                         serial = props.get("object.serial")
-                        app_name = props.get("application.name", "Unknown")
-                        channels = 2
-                        if "audio.channels" in props:
-                            channels = int(props["audio.channels"])
+                        channels = props.get("audio.channels", 2)
                         
-                        # Detect if we need to move this stream
-                        state_key = (node_id, serial, self.is_enabled)
-                        if last_states.get(node_id) != state_key:
+                        # We always route 2ch to Upmixer, but control the mix internally
+                        if last_states.get(node_id) != serial:
                             target_id = None
-                            if self.is_enabled and channels == 2 and upmix_id:
+                            if channels == 2 and upmix_id:
                                 target_id = upmix_id
-                            elif (not self.is_enabled or channels > 2) and hw_sink_id:
+                            elif channels > 2 and hw_sink_id:
                                 target_id = hw_sink_id
                             
                             if target_id:
                                 subprocess.run(["pw-metadata", "-n", "default", node_id, "target.node", str(target_id)])
-                                last_states[node_id] = state_key
+                                last_states[node_id] = serial
                         
-                        # Check if it's currently routed to upmixer for the UI
-                        is_upmixed = metadata_targets.get(node_id) == str(upmix_id)
-                        if is_upmixed:
-                             current_active.append({"name": app_name, "channels": channels})
+                        if metadata_targets.get(node_id) == str(upmix_id):
+                             current_active.append({"name": props.get("application.name", "Unknown"), "channels": channels})
 
             self.active_streams = current_active
             time.sleep(CHECK_INTERVAL)
 
-    def load_upmixer(self, params):
-        dump = self.get_pw_dump()
-        upmix_id = self.get_node_id_by_name(dump, UPMIX_SINK_NAME)
-        if upmix_id:
-            self.is_loaded = True
-            self.apply_live_params(params)
-
     def start(self):
-        # Load initial settings
         settings = self.load_settings()
-        
         self.monitor_thread = threading.Thread(target=self.monitor_loop, daemon=True)
         self.monitor_thread.start()
 
-        # UI
         ui_path = os.path.join(os.path.dirname(__file__), "ui", "index.html")
         api = UpmixAPI(self)
-        window = webview.create_window("Upmix Pro", ui_path, js_api=api, width=450, height=700, resizable=False)
+        window = webview.create_window("Upmix Pro", ui_path, js_api=api, width=450, height=750, resizable=False)
         
-        # We need to trigger the initial load of the upmixer if enabled
-        if self.is_enabled:
-            self.load_upmixer(settings)
+        # Initial parameters apply
+        time.sleep(1)
+        self.is_loaded = True
+        self.apply_live_params(settings)
 
         webview.start(gui='gtk')
         self.running = False
