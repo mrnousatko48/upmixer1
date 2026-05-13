@@ -26,6 +26,16 @@
                     <span id="rear-val">70%</span>
                 </div>
                 <input type="range" id="rear-gain" min="0" max="150" value="70">
+                <p class="note">Fills the rear speakers. Higher values create more immersion.</p>
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Rear Delay</label>
+                    <span id="delay-val">15 ms</span>
+                </div>
+                <input type="range" id="rear-delay" min="0" max="100" value="15">
+                <p class="note">Delay for rear speakers. 10-30ms adds a sense of space.</p>
             </div>
 
             <div class="control-group">
@@ -34,6 +44,7 @@
                     <span id="center-val">80%</span>
                 </div>
                 <input type="range" id="center-gain" min="0" max="150" value="80">
+                <p class="note">Mixes left and right into the center channel. Good for making dialogue clearer.</p>
             </div>
 
             <div class="control-group">
@@ -42,6 +53,21 @@
                     <span id="lfe-val">100%</span>
                 </div>
                 <input type="range" id="lfe-gain" min="0" max="200" value="100">
+                <p class="note">Subwoofer volume. Higher values provide more "thump".</p>
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Subwoofer Phase</label>
+                    <div class="toggle-group">
+                        <label class="switch small">
+                            <input type="checkbox" id="lfe-phase">
+                            <span class="slider round"></span>
+                        </label>
+                        <span id="phase-label">Normal</span>
+                    </div>
+                </div>
+                <p class="note">Invert phase if the bass feels "hollow" or missing.</p>
             </div>
 
             <div class="control-group">
@@ -50,6 +76,7 @@
                     <span id="crossover-val">120 Hz</span>
                 </div>
                 <input type="range" id="crossover-freq" min="60" max="200" value="120">
+                <p class="note">The frequency where bass is sent to the sub. 80-120Hz is recommended.</p>
             </div>
         </section>
 

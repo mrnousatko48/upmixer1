@@ -71,5 +71,26 @@ function refreshApps() {
     }
 }
 
+// Initialization
+function init() {
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.get_settings().then(settings => {
+            elements.rearGain.value = settings.rear_gain * 100;
+            elements.centerGain.value = settings.center_gain * 100;
+            elements.lfeGain.value = settings.lfe_gain * 100;
+            elements.crossoverFreq.value = settings.crossover;
+            elements.masterToggle.checked = settings.is_enabled;
+            
+            elements.statusLabel.innerText = settings.is_enabled ? 'Active' : 'Inactive';
+            elements.statusLabel.style.color = settings.is_enabled ? 'var(--success)' : 'var(--text-dim)';
+            
+            updateLabels();
+        });
+    } else {
+        setTimeout(init, 100);
+    }
+}
+
+init();
 setInterval(refreshApps, 2000);
 updateLabels();
