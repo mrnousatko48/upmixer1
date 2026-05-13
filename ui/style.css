@@ -44,6 +44,21 @@ header {
     padding-bottom: 16px;
 }
 
+.icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.icon-btn:hover {
+    color: var(--accent-color);
+    transform: rotate(-45deg);
+}
+
 h1 {
     font-size: 1.5rem;
     font-weight: 700;

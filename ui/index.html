@@ -11,6 +11,7 @@
         <header>
             <h1>Upmix Pro</h1>
             <div class="status-container">
+                <button id="reset-btn" class="icon-btn" title="Reset to Defaults">↺</button>
                 <span id="status-label">Inactive</span>
                 <label class="switch">
                     <input type="checkbox" id="master-toggle">
@@ -54,6 +55,24 @@
                 </div>
                 <input type="range" id="lfe-gain" min="0" max="200" value="100">
                 <p class="note">Subwoofer volume. Higher values provide more "thump".</p>
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Bass Enrichment</label>
+                    <span id="bass-boost-val">0 dB</span>
+                </div>
+                <input type="range" id="bass-boost" min="0" max="15" value="0">
+                <p class="note">Peaking boost at 60Hz. Adds deep "DVD-style" punch.</p>
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Subwoofer Alignment</label>
+                    <span id="lfe-delay-val">0 ms</span>
+                </div>
+                <input type="range" id="lfe-delay" min="0" max="50" value="0">
+                <p class="note">Delays the sub to align with front speakers. Fixes "hollow" bass.</p>
             </div>
 
             <div class="control-group">

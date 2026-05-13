@@ -19,7 +19,6 @@ class UpmixAPI:
     def toggle_upmixer(self, active, params):
         self.app.is_enabled = active
         self.app.save_settings(params)
-        # We stay routed to Upmix_Sink but zero out the surround channels
         self.app.apply_live_params(params)
 
     def update_params(self, params):
@@ -51,6 +50,7 @@ class UpmixApp:
         return {
             "rear_gain": 0.7, "rear_delay": 0.015,
             "center_gain": 0.8, "lfe_gain": 1.0, 
+            "lfe_delay": 0.0, "bass_boost": 0,
             "lfe_inverted": False, "crossover": 120, 
             "is_enabled": True
         }
@@ -92,24 +92,27 @@ class UpmixApp:
         node_id = self.get_node_id_by_name(dump, UPMIX_SINK_NAME)
         if not node_id: return
 
-        # If disabled, force all gains to zero except FL/FR pass-through
         if not self.is_enabled:
-            rear, center, lfe = 0.0, 0.0, 0.0
+            rear, center, lfe, boost = 0.0, 0.0, 0.0, 0.0
         else:
             rear = params.get('rear_gain', 0.7)
             center = params.get('center_gain', 0.8)
             lfe = params.get('lfe_gain', 1.0)
+            boost = params.get('bass_boost', 0)
             if params.get('lfe_inverted', False):
                 lfe = -lfe
 
-        delay = params.get('rear_delay', 0.015)
+        delay_rear = params.get('rear_delay', 0.015)
+        delay_lfe = params.get('lfe_delay', 0.0)
         
         try:
             commands = [
                 f'"mixFC:Gain 1" {center}', f'"mixFC:Gain 2" {center}',
                 f'"mixLFE:Gain 1" {lfe}', f'"mixLFE:Gain 2" {lfe}',
                 f'"mixRL:Gain 1" {rear}', f'"mixRR:Gain 1" {rear}',
-                f'"delayRL:Delay (s)" {delay}', f'"delayRR:Delay (s)" {delay}'
+                f'"delayRL:Delay (s)" {delay_rear}', f'"delayRR:Delay (s)" {delay_rear}',
+                f'"delayLFE:Delay (s)" {delay_lfe}', 
+                f'"eqBoost:Gain 1" {boost}'
             ]
             for cmd in commands:
                 subprocess.run(["pw-cli", "s", str(node_id), "Props", f"{{ params = [ {cmd} ] }}"], capture_output=True)
@@ -158,7 +161,6 @@ class UpmixApp:
                         serial = props.get("object.serial")
                         channels = props.get("audio.channels", 2)
                         
-                        # We always route 2ch to Upmixer, but control the mix internally
                         if last_states.get(node_id) != serial:
                             target_id = None
                             if channels == 2 and upmix_id:
@@ -183,9 +185,8 @@ class UpmixApp:
 
         ui_path = os.path.join(os.path.dirname(__file__), "ui", "index.html")
         api = UpmixAPI(self)
-        window = webview.create_window("Upmix Pro", ui_path, js_api=api, width=450, height=750, resizable=False)
+        window = webview.create_window("Upmix Pro", ui_path, js_api=api, width=450, height=850, resizable=True)
         
-        # Initial parameters apply
         time.sleep(1)
         self.is_loaded = True
         self.apply_live_params(settings)
