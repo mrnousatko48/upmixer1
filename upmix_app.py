@@ -112,7 +112,7 @@ class UpmixApp:
                 f'"mixRL:Gain 1" {rear}', f'"mixRR:Gain 1" {rear}',
                 f'"delayRL:Delay (s)" {delay_rear}', f'"delayRR:Delay (s)" {delay_rear}',
                 f'"delayLFE:Delay (s)" {delay_lfe}', 
-                f'"eqBoost:Gain 1" {boost}'
+                f'"eqLFE:Gain 3" {boost}'
             ]
             for cmd in commands:
                 subprocess.run(["pw-cli", "s", str(node_id), "Props", f"{{ params = [ {cmd} ] }}"], capture_output=True)
