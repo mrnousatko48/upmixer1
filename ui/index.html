@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upmix Pro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Upmix Pro</h1>
+            <div class="status-container">
+                <span id="status-label">Inactive</span>
+                <label class="switch">
+                    <input type="checkbox" id="master-toggle">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </header>
+
+        <section class="controls">
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Rear Fill</label>
+                    <span id="rear-val">70%</span>
+                </div>
+                <input type="range" id="rear-gain" min="0" max="150" value="70">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Center Clarity</label>
+                    <span id="center-val">80%</span>
+                </div>
+                <input type="range" id="center-gain" min="0" max="150" value="80">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>LFE (Bass) Power</label>
+                    <span id="lfe-val">100%</span>
+                </div>
+                <input type="range" id="lfe-gain" min="0" max="200" value="100">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Crossover</label>
+                    <span id="crossover-val">120 Hz</span>
+                </div>
+                <input type="range" id="crossover-freq" min="60" max="200" value="120">
+            </div>
+        </section>
+
+        <section class="active-apps">
+            <h3>Active Streams</h3>
+            <ul id="app-list">
+                <li class="empty-msg">No active upmixed streams</li>
+            </ul>
+        </section>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
