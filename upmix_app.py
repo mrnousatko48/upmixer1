@@ -11,6 +11,122 @@ import sys
 UPMIX_SINK_NAME = "Upmix_Sink"
 CHECK_INTERVAL = 2.0
 SETTINGS_FILE = os.path.expanduser("~/.config/upmixer_settings.json")
+SYSTEM_CONFIG_PATH = os.path.expanduser("~/.config/pipewire/pipewire.conf.d/upmix-sink.conf")
+
+CONFIG_TEMPLATE = """
+context.modules = [
+    {   name = libpipewire-module-filter-chain
+        args = {
+            node.description = "Upmix Sink"
+            node.name = "Upmix_Sink"
+            filter.graph = {
+                nodes = [
+                    { type = builtin name = copyFL label = copy }
+                    { type = builtin name = copyFR label = copy }
+                    
+                    # High-Pass Filters for Main/Center/Rear (Crucial for Bass Clarity)
+                    { name = hpFL  type = builtin label = param_eq config = { filters = [ { type = bq_highpass freq = 120 } ] } }
+                    { name = hpFR  type = builtin label = param_eq config = { filters = [ { type = bq_highpass freq = 120 } ] } }
+                    { name = hpFC  type = builtin label = param_eq config = { filters = [ { type = bq_highpass freq = 120 } ] } }
+                    { name = hpRL  type = builtin label = param_eq config = { filters = [ { type = bq_highpass freq = 120 } ] } }
+                    { name = hpRR  type = builtin label = param_eq config = { filters = [ { type = bq_highpass freq = 120 } ] } }
+
+                    # Stereo Widener (Mid-Side processing)
+                    { name = mixMid   type = builtin label = mixer }
+                    { name = mixSide  type = builtin label = mixer control = { "Gain 2" = -1.0 } }
+                    { name = outFL    type = builtin label = mixer }
+                    { name = outFR    type = builtin label = mixer control = { "Gain 2" = -1.0 } }
+                    
+                    { name = mixFC    type = builtin label = mixer }
+                    { name = mixRL    type = builtin label = mixer }
+                    { name = mixRR    type = builtin label = mixer }
+                    { name = mixLFE   type = builtin label = mixer }
+                    
+                    # Routing Stage (for Sub/Center swap)
+                    { name = routeFC  type = builtin label = mixer }
+                    { name = routeLFE type = builtin label = mixer }
+                    
+                    {
+                        type = builtin
+                        name = eqLFE
+                        label = param_eq
+                        config = {
+                            filters = [ 
+                                { type = bq_lowpass freq = 120 },
+                                { type = bq_lowpass freq = 120 },
+                                { type = bq_peaking freq = 35 q = 0.8 gain = 0 },
+                                { type = bq_peaking freq = 60 q = 1.0 gain = 0 }
+                            ]
+                        }
+                    }
+
+                    { type = builtin name = delayRL  label = delay config = { "max-delay" = 0.5 } }
+                    { type = builtin name = delayRR  label = delay config = { "max-delay" = 0.5 } }
+                    { type = builtin name = delayLFE label = delay config = { "max-delay" = 0.1 } }
+                ]
+                links = [
+                    # Stereo Widener Logic
+                    { output = "copyFL:Out" input = "mixMid:In 1" }
+                    { output = "copyFR:Out" input = "mixMid:In 2" }
+                    { output = "copyFL:Out" input = "mixSide:In 1" }
+                    { output = "copyFR:Out" input = "mixSide:In 2" }
+                    
+                    { output = "mixMid:Out"  input = "outFL:In 1" }
+                    { output = "mixSide:Out" input = "outFL:In 2" }
+                    { output = "mixMid:Out"  input = "outFR:In 1" }
+                    { output = "mixSide:Out" input = "outFR:In 2" }
+
+                    # Main Output -> High Pass
+                    { output = "outFL:Out"  input = "hpFL:In 1" }
+                    { output = "outFR:Out"  input = "hpFR:In 1" }
+
+                    # Surround -> High Pass -> Delay
+                    { output = "copyFL:Out" input = "mixRL:In 1" }
+                    { output = "copyFR:Out" input = "mixRR:In 1" }
+                    { output = "mixRL:Out"  input = "hpRL:In 1" }
+                    { output = "mixRR:Out"  input = "hpRR:In 1" }
+                    { output = "hpRL:Out 1" input = "delayRL:In" }
+                    { output = "hpRR:Out 1" input = "delayRR:In" }
+                    
+                    # Center -> High Pass
+                    { output = "copyFL:Out" input = "mixFC:In 1" }
+                    { output = "copyFR:Out" input = "mixFC:In 2" }
+                    { output = "mixFC:Out"  input = "hpFC:In 1" }
+                    
+                    # LFE -> EQ -> Delay
+                    { output = "copyFL:Out" input = "mixLFE:In 1" }
+                    { output = "copyFR:Out" input = "mixLFE:In 2" }
+                    { output = "mixLFE:Out" input = "eqLFE:In 1" }
+                    { output = "eqLFE:Out 1" input = "delayLFE:In" }
+                    
+                    # Final Swap Router
+                    { output = "hpFC:Out 1"     input = "routeFC:In 1" }
+                    { output = "delayLFE:Out"   input = "routeFC:In 2" }
+                    { output = "hpFC:Out 1"     input = "routeLFE:In 1" }
+                    { output = "delayLFE:Out"   input = "routeLFE:In 2" }
+                ]
+                inputs = [ "copyFL:In" "copyFR:In" ]
+                outputs = [ 
+                    "hpFL:Out 1" "hpFR:Out 1" "routeFC:Out" 
+                    "routeLFE:Out" "delayRL:Out" "delayRR:Out" 
+                ]
+            }
+            capture.props = {
+                node.name = "Upmix_Sink"
+                media.class = "Audio/Sink"
+                audio.channels = 2
+                audio.position = [ FL FR ]
+            }
+            playback.props = {
+                node.name = "Upmix_Output"
+                audio.channels = 6
+                audio.position = [ FL FR FC LFE RL RR ]
+                node.passive = true
+            }
+        }
+    }
+]
+"""
 
 class UpmixAPI:
     def __init__(self, app):
@@ -31,6 +147,9 @@ class UpmixAPI:
 
     def get_settings(self):
         return self.app.load_settings()
+
+    def install_sink(self):
+        return self.app.install_sink()
 
 class UpmixApp:
     def __init__(self):
@@ -64,6 +183,18 @@ class UpmixApp:
             with open(SETTINGS_FILE, 'w') as f:
                 json.dump(settings, f)
         except: pass
+
+    def install_sink(self):
+        try:
+            os.makedirs(os.path.dirname(SYSTEM_CONFIG_PATH), exist_ok=True)
+            with open(SYSTEM_CONFIG_PATH, 'w') as f:
+                f.write(CONFIG_TEMPLATE)
+            # Restart pipewire
+            subprocess.run(["systemctl", "--user", "restart", "pipewire"], check=True)
+            return True
+        except Exception as e:
+            print(f"Install error: {e}")
+            return False
 
     def get_pw_dump(self):
         try:
@@ -107,6 +238,9 @@ class UpmixApp:
         delay_rear = params.get('rear_delay', 0.015)
         delay_lfe = params.get('lfe_delay', 0.0)
         swap = params.get('swap_sub_center', False)
+        crossover = params.get('crossover', 120)
+        
+        # X-Bass Params
         
         try:
             commands = [
@@ -117,6 +251,13 @@ class UpmixApp:
                 f'"delayLFE:Delay (s)" {delay_lfe}', 
                 f'"eqLFE:Gain 3" {boost}',
                 f'"eqLFE:Gain 4" {boost * 0.7}',
+                f'"hpFL:Highpass (Hz)" {crossover}',
+                f'"hpFR:Highpass (Hz)" {crossover}',
+                f'"hpFC:Highpass (Hz)" {crossover}',
+                f'"hpRL:Highpass (Hz)" {crossover}',
+                f'"hpRR:Highpass (Hz)" {crossover}',
+                f'"eqLFE:Lowpass (Hz) 1" {crossover}',
+                f'"eqLFE:Lowpass (Hz) 2" {crossover}',
                 f'"routeFC:Gain 1" {1.0 if not swap else 0.0}',
                 f'"routeFC:Gain 2" {0.0 if not swap else 1.0}',
                 f'"routeLFE:Gain 1" {0.0 if not swap else 1.0}',

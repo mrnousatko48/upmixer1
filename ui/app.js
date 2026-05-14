@@ -22,7 +22,8 @@ const elements = {
     swapLabel: document.getElementById('swap-label'),
     crossoverVal: document.getElementById('crossover-val'),
     statusLabel: document.getElementById('status-label'),
-    appList: document.getElementById('app-list')
+    appList: document.getElementById('app-list'),
+    installBtn: document.getElementById('install-btn')
 };
 
 // Update UI labels
@@ -87,6 +88,23 @@ elements.stereoWidth.oninput = handleSliderChange;
 elements.lfePhase.onchange = handleSliderChange;
 elements.swapSubCenter.onchange = handleSliderChange;
 elements.crossoverFreq.oninput = handleSliderChange;
+
+// Install Sink
+elements.installBtn.onclick = () => {
+    elements.installBtn.disabled = true;
+    elements.installBtn.innerText = "Installing...";
+    if (window.pywebview) {
+        window.pywebview.api.install_sink().then(success => {
+            if (success) {
+                alert("Upmix Sink installed and PipeWire restarted!");
+            } else {
+                alert("Failed to install. Check console.");
+            }
+            elements.installBtn.disabled = false;
+            elements.installBtn.innerText = "Install Sink";
+        });
+    }
+};
 
 // Reset to Defaults
 elements.resetBtn.onclick = () => {

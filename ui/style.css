@@ -59,6 +59,30 @@ header {
     transform: rotate(-45deg);
 }
 
+.text-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-dim);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.text-btn:hover {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.text-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 h1 {
     font-size: 1.5rem;
     font-weight: 700;
